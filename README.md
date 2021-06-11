@@ -28,3 +28,16 @@ To run the current crawl prototype:
 $ cd ~/creepy_crawlies/crawl_prototype
 $ bash run_custom_sitemap.sh
 ```
+
+### Useful sections from Scrapy docs
+- [Avoiding getting banned](https://docs.scrapy.org/en/latest/topics/practices.html#avoiding-getting-banned)
+- [Dynamic content](https://docs.scrapy.org/en/latest/topics/dynamic-content.html) - either use Splash to pre-render javascript or Selenium (headless browser) to live-render javascript
+- [Autothrottling](https://docs.scrapy.org/en/latest/topics/autothrottle.html)
+- [General Scrapy architecture](https://docs.scrapy.org/en/latest/topics/architecture.html)
+- (Other) [Linking Scrapy to MongoDB](https://realpython.com/web-scraping-with-scrapy-and-mongodb/)
+- (Other) [Assorted tips](https://www.zyte.com/blog/scrapy-tips-from-the-pros-part-1/)
+
+### Polite vs effective
+There seems to be at least some trade-off between being polite to websites ([relate](https://www.zyte.com/blog/how-to-crawl-the-web-politely-with-scrapy/)) and effectively managing to gather information from a website. For example, should the User-Agent correctly identify the bot or use one corresponding to a normal browser.
+
+[Here](https://www.programmersought.com/article/66717873784/) is some tips to get around some measures employed by websites to prevent bots from scraping them.
