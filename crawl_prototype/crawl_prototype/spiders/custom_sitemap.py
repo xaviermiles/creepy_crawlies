@@ -43,11 +43,15 @@ def does_url_exist(url, logger):
 def get_url_level(url):
     return len(list(filter(None, urlsplit(url).path.split('/')))) + 1
 
-def get_website(url):
+def get_domain(url):
+    # Remove www and protocol to ensure consistency between parse_homepage
+    # and parse_about_us.
+    # !!! It should be verified that this is the most sensible process 
+    #     at some point !!!
     url_parts = urlsplit(url)
-    return f"{url_parts.scheme}://{url_parts.netloc}"
+    return url_parts.netloc.replace('www.', '')
         
-     
+    
 def get_http_status_code(url, logger):
     try:
         # verify=False is only acceptable since it is a one-time
@@ -86,45 +90,41 @@ class CustomSitemapSpider(SitemapSpider):
     sitemap_follow = ['\.nz/']
 
     def __init__(self, cc_start=0, cc_end=-1, *a, **kw):
-        # THE cc_start AND cc_end ARGUMENTS ARE PASSED FROM COMMAND LINE
-        # (currently doesn't check that they combine to give a valid list slice)
         try:
-            cc_start_int = int(cc_start)
-            cc_end_int = int(cc_end)
+            # These arguments are passed from console when initiating scrapy.
+            # - Add one so that they correspond to line numbers
+            # - Doesn't verify whether these combine to give a valid list slice
+            cc_start_int = int(cc_start) + 1
+            cc_end_int = int(cc_end) + 1
         except ValueError as e:
             raise e("cc_start and cc_end must be integers")
         
-        with open("../results/ccmain-2021-10-nz-netlocs.txt") as f:
-            cc_domains = f.read().splitlines()[3:] # first 3 lines are not URLs
-        cc_domains_subset = cc_domains[cc_start_int:cc_end_int]
-        robots_or_sitemaps = [get_robots_or_sitemap(domain, self.logger) 
-                              for domain in cc_domains_subset]
-        self.sitemap_urls = [url for url in robots_or_sitemaps if url is not None]
-#         self.sitemap_urls = [
-#             'https://www.macpac.co.nz/robots.txt', 
-#             'https://bluesteelband.co.nz/sitemap.xml',
-#             'https://bluestonedunedin.co.nz/sitemap.xml'
-#         ]
-        self.logger.info(f"First 10 robots/sitemaps:\n{self.sitemap_urls[:10]}")
+        with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
+            cc_domains = f.read().splitlines()[cc_start_int:cc_end_int]
+        self.logger.info(cc_domains)
+        # self.sitemap_urls is normally used but the start_requests method is 
+        # adapted to handle this dictionary structure, so parse_homepage and
+        # parse_about_us are called together(-ish because of concurrency).
+        self.sitemap_urls_dict = {
+            f"https://{domain}": get_robots_or_sitemap(domain, self.logger)
+            for domain in cc_domains
+        }
+        self.logger.info(f"Sitemap dictionary:\n{self.sitemap_urls_dict}")
         
         super(CustomSitemapSpider, self).__init__(*a, **kw)
 
-    def start_requests(self):     
-        for url in self.sitemap_urls:
-            # Construct homepage and process
-            homepage_url = get_website(url)
-            yield Request(homepage_url, callback=self.parse_homepage)
-            # Process sitemap
-            yield Request(url, callback=self._parse_sitemap)
+    def start_requests(self):
+        for homepage, robots_or_sitemap in self.sitemap_urls_dict.items():
+            yield Request(homepage, callback=self.parse_homepage)
+            if robots_or_sitemap:
+                yield Request(robots_or_sitemap, callback=self._parse_sitemap)
     
     def parse_homepage(self, response):
-#         assert get_url_level(response.url) == 1 # check if homepage
-        
         hp_item = HomepageItem()
         hp_item['url'] = response.url
         hp_item['level'] = 1
         hp_item['referer'] = None
-        hp_item['website'] = response.url
+        hp_item['website'] = get_domain(response.url)
         
         # ADD HOSTING INFORMATION LIKE: ip address, AS number, AS company, reverse DNS lookup etc. etc.
         hp_item['ip_address'] = response.ip_address
@@ -147,11 +147,11 @@ class CustomSitemapSpider(SitemapSpider):
         gwp_item['level'] = get_url_level(response.url)
         referer = response.request.headers.get('referer', None)
         gwp_item['referer'] = referer.decode() if referer else None
-        gwp_item['website'] = get_website(response.url)
+        gwp_item['website'] = get_domain(response.url)
         
         page_text = BeautifulSoup(response.body, 'html.parser').get_text()
-        clean_text = '\n'.join(x for x in page_text.split('\n') if x) # remove redundant newlines
-        cleaner_text = unicodedata.normalize('NFKD', clean_text) # remove decoding mistakes
+        clean_text = '\n'.join(x for x in page_text.split('\n') if x)  # remove redundant newlines
+        cleaner_text = unicodedata.normalize('NFKD', clean_text)  # remove decoding mistakes
 #         gwp_item['text'] = cleaner_text
     
         gwp_item['phone_numbers'] = set()
