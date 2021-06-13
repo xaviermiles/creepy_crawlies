@@ -89,18 +89,27 @@ class CustomSitemapSpider(SitemapSpider):
     # processed.
     sitemap_follow = ['\.nz/']
 
-    def __init__(self, cc_start=0, cc_end=-1, *a, **kw):
+    def __init__(self, cc_start=4, cc_end=14, *a, **kw):
+        NUM_LINES = 41170
         try:
             # These arguments are passed from console when initiating scrapy.
-            # - Add one so that they correspond to line numbers
-            # - Doesn't verify whether these combine to give a valid list slice
-            cc_start_int = int(cc_start) + 1
-            cc_end_int = int(cc_end) + 1
-        except ValueError as e:
-            raise e("cc_start and cc_end must be integers")
+            cc_start_int = int(cc_start)
+            cc_end_int = int(cc_end)
+        except ValueError:
+            raise ValueError("cc_start and cc_end must be integers")
+        else:
+            # If integers, verify whether they give a sensible list slice
+            if cc_start_int >= cc_end_int:
+                raise ValueError("cc_start should be < cc_end")
+            elif cc_start_int <= 3:
+                raise ValueError("cc_start should be >= 4")
+            elif cc_end_int > NUM_LINES:
+                raise ValueError(f"cc_end should be <= {NUM_LINES} (num_lines)")
         
         with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
-            cc_domains = f.read().splitlines()[cc_start_int:cc_end_int]
+            # Subtract one from cc_start/cc_end so that they 
+            # correspond to line numbers.
+            cc_domains = f.read().splitlines()[(cc_start_int - 1):(cc_end_int - 1)]
         self.logger.info(cc_domains)
         # self.sitemap_urls is normally used but the start_requests method is 
         # adapted to handle this dictionary structure, so parse_homepage and
