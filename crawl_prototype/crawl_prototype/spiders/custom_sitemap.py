@@ -1,5 +1,5 @@
 # Run using:
-# $ cd ~/web_sentiment_analysis/commoncrawl/digital_economy/crawl_prototype
+# $ cd ~/creepy_crawlies/crawl_prototype
 # $ bash run_custom_sitemap.sh
 
 # To download ASN lookup file (to be used with pyasn):
@@ -24,10 +24,11 @@ from urllib.parse import urlsplit
 
 import scrapy
 from scrapy import Request
+from scrapy.spiders import SitemapSpider
 from scrapy.utils.sitemap import Sitemap, sitemap_urls_from_robots
 
 # local:
-from scrapy.spiders import SitemapSpider
+import ecom_utils
 from crawl_prototype.items import GenericWebpageItem, HomepageItem
 
 
@@ -100,15 +101,15 @@ class CustomSitemapSpider(SitemapSpider):
         else:
             # If integers, verify whether they give a sensible list slice
             if cc_start_int >= cc_end_int:
-                raise ValueError("cc_start should be < cc_end")
+                raise ValueError("cc_start should be less than cc_end")
             elif cc_start_int <= 3:
                 raise ValueError("cc_start should be >= 4")
             elif cc_end_int > NUM_LINES:
                 raise ValueError(f"cc_end should be <= {NUM_LINES} (num_lines)")
         
         with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
-            # Subtract one from cc_start/cc_end so that they 
-            # correspond to line numbers.
+            # Subtract one from cc_start/cc_end so that they correspond to line
+            # numbers.
             cc_domains = f.read().splitlines()[(cc_start_int - 1):(cc_end_int - 1)]
         self.logger.info(cc_domains)
         # self.sitemap_urls is normally used but the start_requests method is 
@@ -129,11 +130,20 @@ class CustomSitemapSpider(SitemapSpider):
                 yield Request(robots_or_sitemap, callback=self._parse_sitemap)
     
     def parse_homepage(self, response):
+        """
+        parse_homepage: FILL OUT
+        """
         hp_item = HomepageItem()
         hp_item['url'] = response.url
         hp_item['level'] = 1
         hp_item['referer'] = None
         hp_item['website'] = get_domain(response.url)
+        
+        # (Try to) Detect ecommerce software
+        response_html = str(response.body)
+        hp_item['cart_software'] = ecom_utils.detect_cart_softwares(response_html)
+        hp_item['has_card'] = ecom_utils.detect_if_has_card(response_html)
+        hp_item['payment_systems'] = ecom_utils.detect_payment_systems(response_html)
         
         # ADD HOSTING INFORMATION LIKE: ip address, AS number, AS company, reverse DNS lookup etc. etc.
         hp_item['ip_address'] = response.ip_address
@@ -150,6 +160,9 @@ class CustomSitemapSpider(SitemapSpider):
         yield hp_item
     
     def parse_about_us(self, response):
+        """
+        parse_about_us: FILL OUT
+        """
 #         print(dir(response))
         gwp_item = GenericWebpageItem()
         gwp_item['url'] = response.url

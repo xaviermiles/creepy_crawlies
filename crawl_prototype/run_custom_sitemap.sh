@@ -29,4 +29,3 @@ scrapy crawl custom_sitemap -O custom_sitemap_output/full_sitemap.csv \
 
 # Post-processing
 python3 custom_sitemap_postproc.py --cc_start $CC_START --cc_end $CC_END
-

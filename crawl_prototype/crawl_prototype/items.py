@@ -35,6 +35,10 @@ class GenericWebpageItem(Item):
     
 class HomepageItem(GenericWebpageItem):
     # Sufficient to record these fields only once per website/domain
+    cart_software = Field()
+    has_card = Field()
+    payment_systems = Field()
+    
     ip_address = Field()
     as_number = Field()
     reverse_dns_lookup = Field()
