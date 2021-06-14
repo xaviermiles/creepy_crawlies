@@ -1,7 +1,3 @@
-# Run using:
-# $ cd ~/creepy_crawlies/crawl_prototype
-# $ bash run_custom_sitemap.sh
-
 # To download ASN lookup file (to be used with pyasn):
 # $ ~/.local/bin/pyasn_util_download.py --latest
 # $ ~/.local/bin/pyasn_util_convert.py --single <downloaded_RIB_filename> <ipasn_db_filename>
@@ -15,6 +11,16 @@
 #   - https://www.cidr-report.org/as2.0/autnums.html
 #   - https://github.com/hadiasghari/pyasn
 
+# To handle settings.HTTPCACHE_ENABLED==True:
+# - Setting ip_address to "*cache copy*"
+# - Keeping a list of robots/sitemaps in txt file, so these HEAD requests do 
+#   not need to be sent. Only one cached copy is saved, so it will the HEAD
+#   requests will be necessary if the saved copy does not have the correct 
+#   line numbers.
+
+import re
+import os, glob
+import json
 import logging
 import socket
 import urllib3, requests
@@ -29,7 +35,7 @@ from scrapy.utils.sitemap import Sitemap, sitemap_urls_from_robots
 
 # local:
 import ecom_utils
-from crawl_prototype import items
+from crawl_prototype import items, settings
 
 
 # To silently allow verify=False in requests:
@@ -111,14 +117,36 @@ class CustomSitemapSpider(SitemapSpider):
             # Subtract one from cc_start/cc_end so that they correspond to line
             # numbers.
             cc_domains = f.read().splitlines()[(cc_start_int - 1):(cc_end_int - 1)]
-        self.logger.info(cc_domains)
+        
         # self.sitemap_urls is normally used but the start_requests method is 
         # adapted to handle this dictionary structure, so parse_homepage and
         # parse_about_us are called together(-ish because of concurrency).
-        self.sitemap_urls_dict = {
-            f"https://{domain}": get_robots_or_sitemap(domain, self.logger)
-            for domain in cc_domains
-        }
+        glob_str = "cached_sitemaps_*_to_*.json"
+        regex_str = "cached_sitemaps_(\d+)_to_(\d+).json"
+        glob_match = glob.glob(glob_str)
+        line_nums_correct = False
+        if glob_match:
+            json_fpath = glob.glob(glob_str)[0]  # should only be one match
+            line_nums = re.search(regex_str, json_fpath).groups()
+            if cc_start_int == int(line_nums[0]) and cc_end_int == int(line_nums[1]):
+                line_nums_correct = True
+            else:
+                self.logger.info("Removing old sitemap_urls_dict JSON file")
+                os.remove(json_fpath)  # so there is only one cached file
+            
+        if settings.HTTPCACHE_ENABLED and line_nums_correct:
+            self.logger.info("Loading sitemap_urls_dict from JSON file")
+            with open(json_fpath, 'r') as f:
+                self.sitemap_urls_dict = json.load(f)
+        else:
+            self.logger.info("Constructing sitemap_urls_dict and saving to JSON file")
+            self.sitemap_urls_dict = {
+                f"https://{domain}": get_robots_or_sitemap(domain, self.logger)
+                for domain in cc_domains
+            }
+            with open(f"cached_sitemaps_{cc_start_int}_to_{cc_end_int}.json", 'w') as f:
+                json.dump(self.sitemap_urls_dict, f)
+                
         self.logger.info(f"Sitemap dictionary:\n{self.sitemap_urls_dict}")
         
         super(CustomSitemapSpider, self).__init__(*a, **kw)
@@ -144,16 +172,22 @@ class CustomSitemapSpider(SitemapSpider):
         # ADD HOSTING INFORMATION LIKE: ip address, AS number, AS company, reverse DNS lookup etc. etc.
         hp_item['ip_address'] = response.ip_address
 #         hp_item['test'] = requests.get(f"http://whois.arin.net/rest/ip/{response.ip_address}").content
-        hp_item['test'] = response.ip_address.reverse_pointer
+        hp_item['test'] = (
+            response.ip_address.reverse_pointer 
+            if not settings.HTTPCACHE_ENABLED else "*cached copy*"
+        )
         try:
-            hp_item['reverse_dns_lookup'] = socket.gethostbyaddr(str(response.ip_address))[0]
+            hp_item['reverse_dns_lookup'] = (
+                socket.gethostbyaddr(str(response.ip_address))[0] 
+                if not settings.HTTPCACHE_ENABLED else "*cached copy*"
+            )
         except socket.herror as e:
             if e.strerror == "Unknown host":
                 hp_item['reverse_dns_lookup'] = "Unknown"
             else:
                 raise e
         
-        return self.parse_generic_webpage(response, hp_item)
+        return self.parse_generic_webpage(response, preexisting_item=hp_item)
     
     def parse_about_us(self, response):
         """
@@ -162,7 +196,7 @@ class CustomSitemapSpider(SitemapSpider):
         au_item = items.AboutUsItem()
         # TODO: add specific logic for AboutUs/ContactUs pages
         
-        return self.parse_generic_webpage(response, au_item)
+        return self.parse_generic_webpage(response, preexisting_item=au_item)
     
     def parse_generic_webpage(self, response, preexisting_item=None):
         """
