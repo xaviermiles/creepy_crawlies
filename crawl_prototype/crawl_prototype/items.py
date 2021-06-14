@@ -33,6 +33,11 @@ class GenericWebpageItem(Item):
     test = Field()
     
     
+class AboutUsItem(Item):
+    # TODO: add specific fields for AboutUs/ContactUs pages
+    pass
+    
+    
 class HomepageItem(GenericWebpageItem):
     # Sufficient to record these fields only once per website/domain
     cart_software = Field()

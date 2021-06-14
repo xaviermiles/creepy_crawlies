@@ -10,7 +10,7 @@ def detect_cart_softwares(html):
     
     Does not handle custom/manually-implemented cart software.
     """
-    bs = BeautifulSoup(html)
+    bs = BeautifulSoup(html, 'html.parser')
     detected_carts = []
         
     # Demandware is a subsidiary of Salesforce and was renamed to Salesforce Commerce Cloud
@@ -54,7 +54,7 @@ def detect_cart_softwares(html):
 
 
 def detect_if_has_card(html):
-    bs = BeautifulSoup(html)
+    bs = BeautifulSoup(html, 'html.parser')
     
     if 'addtocart' in html.lower():
         return True

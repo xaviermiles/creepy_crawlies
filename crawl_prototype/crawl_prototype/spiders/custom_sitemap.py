@@ -29,7 +29,7 @@ from scrapy.utils.sitemap import Sitemap, sitemap_urls_from_robots
 
 # local:
 import ecom_utils
-from crawl_prototype.items import GenericWebpageItem, HomepageItem
+from crawl_prototype import items
 
 
 # To silently allow verify=False in requests:
@@ -133,11 +133,7 @@ class CustomSitemapSpider(SitemapSpider):
         """
         parse_homepage: FILL OUT
         """
-        hp_item = HomepageItem()
-        hp_item['url'] = response.url
-        hp_item['level'] = 1
-        hp_item['referer'] = None
-        hp_item['website'] = get_domain(response.url)
+        hp_item = items.HomepageItem()
         
         # (Try to) Detect ecommerce software
         response_html = str(response.body)
@@ -157,14 +153,23 @@ class CustomSitemapSpider(SitemapSpider):
             else:
                 raise e
         
-        yield hp_item
+        return self.parse_about_us(response, hp_item)
     
     def parse_about_us(self, response):
+        au_item = items.AboutUsItem()
+        # TODO: add specific logic for AboutUs/ContactUs pages
+        
+        return self.parse_generic_webpage(response, au_item)
+    
+    def parse_about_us(self, response, preexisting_item=None):
         """
         parse_about_us: FILL OUT
         """
-#         print(dir(response))
-        gwp_item = GenericWebpageItem()
+        if preexisting_item:
+            gwp_item = preexisting_item
+        else:
+            gwp_item = items.GenericWebpageItem()
+        
         gwp_item['url'] = response.url
         gwp_item['level'] = get_url_level(response.url)
         referer = response.request.headers.get('referer', None)
