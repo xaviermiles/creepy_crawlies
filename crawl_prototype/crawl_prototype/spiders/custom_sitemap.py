@@ -14,9 +14,8 @@
 # To handle settings.HTTPCACHE_ENABLED==True:
 # - Setting ip_address to "*cache copy*"
 # - Keeping a list of robots/sitemaps in txt file, so these HEAD requests do 
-#   not need to be sent. Only one cached copy is saved, so it will the HEAD
-#   requests will be necessary if the saved copy does not have the correct 
-#   line numbers.
+#   not need to be sent. Only one cached copy is saved, so the HEAD requests 
+#   will be necessary if the saved copy does not have the correct line numbers.
 
 import re
 import os, glob
@@ -121,7 +120,7 @@ class CustomSitemapSpider(SitemapSpider):
         # self.sitemap_urls is normally used but the start_requests method is 
         # adapted to handle this dictionary structure, so parse_homepage and
         # parse_about_us are called together(-ish because of concurrency).
-        glob_str = "cached_sitemaps_*_to_*.json"
+        glob_str = os.path.join("custom_sitemap_output", "cached_sitemaps_*_to_*.json")
         regex_str = "cached_sitemaps_(\d+)_to_(\d+).json"
         glob_match = glob.glob(glob_str)
         line_nums_correct = False
@@ -144,7 +143,9 @@ class CustomSitemapSpider(SitemapSpider):
                 f"https://{domain}": get_robots_or_sitemap(domain, self.logger)
                 for domain in cc_domains
             }
-            with open(f"cached_sitemaps_{cc_start_int}_to_{cc_end_int}.json", 'w') as f:
+            json_fpath = os.path.join("custom_sitemap_output", 
+                                      f"cached_sitemaps_{cc_start_int}_to_{cc_end_int}.json")
+            with open(json_fpath, 'w') as f:
                 json.dump(self.sitemap_urls_dict, f)
                 
         self.logger.info(f"Sitemap dictionary:\n{self.sitemap_urls_dict}")
