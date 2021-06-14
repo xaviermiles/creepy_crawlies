@@ -153,17 +153,20 @@ class CustomSitemapSpider(SitemapSpider):
             else:
                 raise e
         
-        return self.parse_about_us(response, hp_item)
+        return self.parse_generic_webpage(response, hp_item)
     
     def parse_about_us(self, response):
+        """
+        parse_about_us: FILL OUT
+        """
         au_item = items.AboutUsItem()
         # TODO: add specific logic for AboutUs/ContactUs pages
         
         return self.parse_generic_webpage(response, au_item)
     
-    def parse_about_us(self, response, preexisting_item=None):
+    def parse_generic_webpage(self, response, preexisting_item=None):
         """
-        parse_about_us: FILL OUT
+        parse_generic_webpage: FILL OUT
         """
         if preexisting_item:
             gwp_item = preexisting_item
