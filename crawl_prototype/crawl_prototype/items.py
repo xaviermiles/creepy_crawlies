@@ -33,7 +33,7 @@ class GenericWebpageItem(Item):
     test = Field()
     
     
-class AboutUsItem(Item):
+class AboutUsItem(GenericWebpageItem):
     # TODO: add specific fields for AboutUs/ContactUs pages
     pass
     
