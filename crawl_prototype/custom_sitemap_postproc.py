@@ -17,8 +17,16 @@ print("\n\nStarting post-processing")
 print("...Aggregating output by website...")
 full_sitemap = pd.read_csv("custom_sitemap_output/full_sitemap.csv")
 # !!! Add custom logic for each column once the columns are more finalised !!!
-per_website_sitemap = full_sitemap.groupby('website') \
-                                  .agg(lambda x: list(pd.Series(x).dropna()))
+def general_agg_func(x):
+    x_filt = [y for y in x if y != 'set()']
+    x_filt_tidy = list(pd.Series(x_filt, dtype='object')
+                       .dropna()
+                       .drop_duplicates()
+                       )
+    return x_filt_tidy
+
+
+per_website_sitemap = full_sitemap.groupby('website').agg(general_agg_func)
 # Add rows for the non-scraped websites (websites that blocked the crawl).
 # Subtract one from CC_START/CC_END so that they correspond to line numbers.
 with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
