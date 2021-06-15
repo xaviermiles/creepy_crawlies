@@ -13,6 +13,8 @@
 
 # To handle settings.HTTPCACHE_ENABLED==True:
 # - Setting ip_address to "*cache copy*"
+# - Setting ssl_certificate to "*cache copy*"
+# - Setting protocol to "*cache copy*"
 # - Keeping a list of robots/sitemaps in txt file, so these HEAD requests do 
 #   not need to be sent. Only one cached copy is saved, so the HEAD requests 
 #   will be necessary if the saved copy does not have the correct line numbers.
@@ -105,8 +107,9 @@ class CustomSitemapSpider(SitemapSpider):
             raise ValueError("cc_start and cc_end must be integers")
         else:
             # If integers, verify whether they give a sensible list slice
+            # (does not support negative integers).
             if cc_start_int >= cc_end_int:
-                raise ValueError("cc_start should be less than cc_end")
+                raise ValueError("cc_start should be < cc_end")
             elif cc_start_int <= 3:
                 raise ValueError("cc_start should be >= 4")
             elif cc_end_int > NUM_LINES:
@@ -165,18 +168,24 @@ class CustomSitemapSpider(SitemapSpider):
         hp_item = items.HomepageItem()
         
         # (Try to) Detect ecommerce software
-        response_html = str(response.body)
+        response_html = response.body.decode()
         hp_item['cart_software'] = ecom_utils.detect_cart_softwares(response_html)
         hp_item['has_card'] = ecom_utils.detect_if_has_card(response_html)
         hp_item['payment_systems'] = ecom_utils.detect_payment_systems(response_html)
         
         # ADD HOSTING INFORMATION LIKE: ip address, AS number, AS company, reverse DNS lookup etc. etc.
         hp_item['ip_address'] = response.ip_address
+        hp_item['ssl_certificate'] = (response.certificate is not None
+                                      if not settings.HTTPCACHE_ENABLED 
+                                      else "*cached copy*")
+        hp_item['protocol'] = (response.protocol 
+                               if not settings.HTTPCACHE_ENABLED 
+                               else "*cached copy*")
+        
 #         hp_item['test'] = requests.get(f"http://whois.arin.net/rest/ip/{response.ip_address}").content
-        hp_item['test'] = (
-            response.ip_address.reverse_pointer 
-            if not settings.HTTPCACHE_ENABLED else "*cached copy*"
-        )
+#         hp_item['test'] = (response.ip_address.reverse_pointer 
+#                            if not settings.HTTPCACHE_ENABLED 
+#                            else "*cached copy*")
         try:
             hp_item['reverse_dns_lookup'] = (
                 socket.gethostbyaddr(str(response.ip_address))[0] 
@@ -213,10 +222,12 @@ class CustomSitemapSpider(SitemapSpider):
         referer = response.request.headers.get('referer', None)
         gwp_item['referer'] = referer.decode() if referer else None
         gwp_item['website'] = get_domain(response.url)
+        gwp_item['status_code'] = response.status
         
-        page_text = BeautifulSoup(response.body, 'html.parser').get_text()
-        clean_text = '\n'.join(x for x in page_text.split('\n') if x)  # remove redundant newlines
-        cleaner_text = unicodedata.normalize('NFKD', clean_text)  # remove decoding mistakes
+#         gwp_item['html'] = str(response.body)
+#         page_text = BeautifulSoup(response.body, 'html.parser').get_text()
+#         clean_text = '\n'.join(x for x in page_text.split('\n') if x)  # remove redundant newlines
+#         cleaner_text = unicodedata.normalize('NFKD', clean_text)  # remove decoding mistakes
 #         gwp_item['text'] = cleaner_text
     
         gwp_item['phone_numbers'] = set()
@@ -229,7 +240,7 @@ class CustomSitemapSpider(SitemapSpider):
                     gwp_item['phone_numbers'].add(href[4:])
                 else:
                     gwp_item['phone_numbers'].add(a_tag.xpath('text()').get()) 
-            if any(social_name in href for social_name in ['facebook','instagram','twitter','youtube']):
+            if any(social_name in href for social_name in ['facebook','instagram','twitter','youtube','linkedin']):
                 gwp_item['social_links'].add(href)
         
         yield gwp_item

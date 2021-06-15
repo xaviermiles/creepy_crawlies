@@ -24,7 +24,9 @@ class GenericWebpageItem(Item):
     level = Field()
     referer = Field()
     website = Field()
+    status_code = Field()
     
+    html = Field()
     text = Field()
     
     phone_numbers = Field()
@@ -45,6 +47,8 @@ class HomepageItem(GenericWebpageItem):
     payment_systems = Field()
     
     ip_address = Field()
+    ssl_certificate = Field()
+    protocol = Field()
     as_number = Field()
     reverse_dns_lookup = Field()
     
