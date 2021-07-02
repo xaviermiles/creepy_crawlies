@@ -31,7 +31,7 @@ per_website_sitemap = full_sitemap.groupby('website').agg(general_agg_func)
 # Subtract one from CC_START/CC_END so that they correspond to line numbers.
 with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
     cc_domains = f.read().splitlines()[(CC_START - 1):(CC_END - 1)]
-per_website_sitemap = per_website_sitemap.reindex(per_website_sitemap.index.union(cc_domains))
+per_website_sitemap = per_website_sitemap.reindex(cc_domains)
 # Make line numbers the indices, move websites from index to column
 per_website_sitemap = per_website_sitemap.reset_index(level=0)
 per_website_sitemap.index = pd.Index(range(CC_START, CC_END), name='txt_line_num')
