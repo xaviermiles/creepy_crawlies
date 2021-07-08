@@ -11,7 +11,7 @@
 #   - https://www.cidr-report.org/as2.0/autnums.html
 #   - https://github.com/hadiasghari/pyasn
 
-# To handle settings.HTTPCACHE_ENABLED==True:
+# How the spider handles settings.HTTPCACHE_ENABLED==True:
 # - Setting ip_address to "*cache copy*"
 # - Setting ssl_certificate to "*cache copy*"
 # - Setting protocol to "*cache copy*"
@@ -167,13 +167,33 @@ class CustomSitemapSpider(SitemapSpider):
         """
         hp_item = items.HomepageItem()
         
+        # "Content"
+        bs = BeautifulSoup(response.body, 'html.parser')
+        hp_item['title'] = bs.find('title').get_text()
+        author_tag = bs.find('meta', {'name': 'author', 'content': True})
+        hp_item['author'] = author_tag['content'] if author_tag else None
+        description_tag = bs.find('meta', {'name': 'description', 'content': True})
+        hp_item['description'] = description_tag['content'] if description_tag else None
+        
+        footer = bs.find('footer')
+        if footer:
+            text_parts = [x for x in re.split(r'\n|\t|\r', footer.get_text()) if x]
+            # \xa9 is unicode for the copyright symbol
+            text_parts_copyright = [
+                re.match(r'^.*(\xa9|copyright).*$', text, flags=re.I)
+                for text in text_parts
+            ]
+            hp_item['copyright'] = [
+                t.group(0).strip() for t in text_parts_copyright if t
+            ]
+        
         # (Try to) Detect ecommerce software
         response_html = response.body.decode()
         hp_item['cart_software'] = ecom_utils.detect_cart_softwares(response_html)
         hp_item['has_card'] = ecom_utils.detect_if_has_card(response_html)
         hp_item['payment_systems'] = ecom_utils.detect_payment_systems(response_html)
         
-        # ADD HOSTING INFORMATION LIKE: ip address, AS number, AS company, reverse DNS lookup etc. etc.
+        # Add more hosting information? e.g. AS number, AS company
         hp_item['ip_address'] = response.ip_address
         hp_item['ssl_certificate'] = (response.certificate is not None
                                       if not settings.HTTPCACHE_ENABLED 

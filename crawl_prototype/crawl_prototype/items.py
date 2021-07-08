@@ -20,6 +20,7 @@ class LinkItem(Item):
     
     
 class GenericWebpageItem(Item):
+    # Fields recorded from every webpage on a website
     url = Field()
     level = Field()
     referer = Field()
@@ -41,7 +42,12 @@ class AboutUsItem(GenericWebpageItem):
     
     
 class HomepageItem(GenericWebpageItem):
-    # Sufficient to record these fields only once per website/domain
+    # Fields only recorded from the homepage of each website
+    title = Field()
+    description = Field()
+    author = Field()
+    copyright = Field()
+    
     cart_software = Field()
     has_card = Field()
     payment_systems = Field()
