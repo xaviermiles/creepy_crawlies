@@ -17,17 +17,22 @@ Very good resource for general info on web crawlers: [not-wikipedia](https://en.
 
 ## Software to use
 
-Currently the prototype crawler was made using the Scrapy package in Python, since this seemed like the most approachable software that still provided a very comprehensive crawling framework. The greatest downside to Scrapy is that it is does not provide _any built-in facility for running crawls in a distribute (multi-server) manner_, although this can be overcome through manual implementation ([related section in docs](https://docs.scrapy.org/en/latest/topics/practices.html#distributed-crawls)). For example, the list of websites to crawl could be split into partitions and each of these partitions be handled by an identical spider running on a different EC2-instance.
+Currently the prototype crawler was made using the Scrapy package in Python, since this seemed like the most approachable software that still provided a very comprehensive crawling framework. The greatest downside to Scrapy is that it is does not provide _"any built-in facility for running crawls in a distribute (multi-server) manner"_, although this can be overcome through manual implementation ([related section in docs](https://docs.scrapy.org/en/latest/topics/practices.html#distributed-crawls)). For example, the list of websites to crawl could be split into partitions and each of these partitions be handled by an identical spider running on a different EC2-instance.
 Alternative choices:
 - rvest (R)
 - Apache Nutch (Java)
 - Multiple Python (or R) libraries to create a collection of crawlers distributed across 20 EC2 instances with manually-implemented scraping/crawling framework ([see this guide](https://michaelnielsen.org/ddi/how-to-crawl-a-quarter-billion-webpages-in-40-hours/)). This would provide the most customised option but would be an extreme technical challenge. (Note, the techniques used by the above guide are likely outdated since it is from 2012.)
 
-To run the current crawl prototype:
+To run the current crawl prototype in console, set the working directory to `crawl_prototype/` and then run
 ```
-$ cd ~/creepy_crawlies/crawl_prototype
 $ bash run_custom_sitemap.sh
 ```
+
+The crawl prototype:
+- is set to run through only 20 websites. To change this, change the values of CC_START & CC_END in `crawl_prototype/run_custom_sitemap.sh`.
+- is not set to cache responses, but does allow this option. To change this, set "HTTPCACHE_ENABLED = True" in `crawl_prototype/crawl_prototype/settings.py`.
+- is a work in progress. To try scraping a new piece of information from a webpage response, assign it to the "test" field and it will show up in the output CSV.
+- does not order the columns in the output CSV (TODO - could do in postprocessing python script). There is groupings/hierarchy to the output fields which is also not captured/implied in the output CSV.
 
 ### Useful sections from Scrapy docs
 - [Avoiding getting banned](https://docs.scrapy.org/en/latest/topics/practices.html#avoiding-getting-banned)
