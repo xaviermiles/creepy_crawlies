@@ -1,15 +1,4 @@
-# To download ASN lookup file (to be used with pyasn):
-# $ ~/.local/bin/pyasn_util_download.py --latest
-# $ ~/.local/bin/pyasn_util_convert.py --single <downloaded_RIB_filename> <ipasn_db_filename>
-
-# Additional ideas:
-# > Improve scrape success rate by adding javascript/browser support: 
-#   - https://stackoverflow.com/questions/47315699/scrapy-user-agent-and-robotstxt-obey-are-properly-set-but-i-still-get-error-40
-# > Detect HTML version (difficult?): 
-#   - https://howtocheckversion.com/check-html-version-website/
-# > Detect AS number (& ASN owner): 
-#   - https://www.cidr-report.org/as2.0/autnums.html
-#   - https://github.com/hadiasghari/pyasn
+# Contains CustomSitemapSpider and associated helper functions.
 
 # How the spider handles settings.HTTPCACHE_ENABLED==True:
 # - Setting ip_address to "*cache copy*"
@@ -18,6 +7,10 @@
 # - Keeping a list of robots/sitemaps in txt file, so these HEAD requests do 
 #   not need to be sent. Only one cached copy is saved, so the HEAD requests 
 #   will be necessary if the saved copy does not have the correct line numbers.
+
+# To download ASN lookup file (to be used with pyasn):
+# $ ~/.local/bin/pyasn_util_download.py --latest
+# $ ~/.local/bin/pyasn_util_convert.py --single <downloaded_RIB_filename> <ipasn_db_filename>
 
 import re
 import os, glob
