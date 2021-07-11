@@ -6,12 +6,7 @@
 from scrapy import Item, Field
 
 
-class CrawlPrototypeItem(Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
-
-
+# For about_us_spider:
 class LinkItem(Item):
     link = Field()
     text = Field()
@@ -19,6 +14,7 @@ class LinkItem(Item):
     has_about_us = Field()
     
     
+# For custom_sitemap_spider:
 class GenericWebpageItem(Item):
     # Fields recorded from every webpage on a website
     url = Field()
