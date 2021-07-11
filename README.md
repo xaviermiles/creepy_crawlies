@@ -16,23 +16,11 @@ There is four main considerations when setting up (or maintaining) web-crawlers:
 Very good resource for general info on web crawlers: [not-wikipedia](https://en.wikipedia.org/wiki/Web_crawler).
 
 ## Software to use
-
-Currently the prototype crawler was made using the Scrapy package in Python, since this seemed like the most approachable software that still provided a very comprehensive crawling framework. The greatest downside to Scrapy is that it is does not provide _"any built-in facility for running crawls in a distribute (multi-server) manner"_, although this can be overcome through manual implementation ([related section in docs](https://docs.scrapy.org/en/latest/topics/practices.html#distributed-crawls)). For example, the list of websites to crawl could be split into partitions and each of these partitions be handled by an identical spider running on a different EC2-instance.
+Currently the crawler(s) have been using the Scrapy package in Python, since this seemed like the most approachable software that still provided a very comprehensive crawling framework. The greatest downside to Scrapy is that it does not provide _"any built-in facility for running crawls in a distribute (multi-server) manner"_, although this can be overcome through manual implementation ([related section in docs](https://docs.scrapy.org/en/latest/topics/practices.html#distributed-crawls)). For example, the list of websites to crawl could be split into partitions and each of these partitions be handled by an identical spider running on a different EC2-instance.
 Alternative choices:
 - rvest (R)
 - Apache Nutch (Java)
 - Multiple Python (or R) libraries to create a collection of crawlers distributed across 20 EC2 instances with manually-implemented scraping/crawling framework ([see this guide](https://michaelnielsen.org/ddi/how-to-crawl-a-quarter-billion-webpages-in-40-hours/)). This would provide the most customised option but would be an extreme technical challenge. (Note, the techniques used by the above guide are likely outdated since it is from 2012.)
-
-To run the current crawl prototype in console, set the working directory to `crawl_prototype/` and then run
-```
-$ bash run_custom_sitemap.sh
-```
-
-The crawl prototype:
-- is set to run through only 20 websites. To change this, change the values of CC_START & CC_END in `crawl_prototype/run_custom_sitemap.sh`.
-- is not set to cache responses, but does allow this option. To change this, set "HTTPCACHE_ENABLED = True" in `crawl_prototype/crawl_prototype/settings.py`.
-- is a work in progress. To try scraping a new piece of information from a webpage response, assign it to the "test" field and it will show up in the output CSV.
-- does not order the columns in the output CSV (TODO - could do in postprocessing python script). There is groupings/hierarchy to the output fields which is also not captured/implied in the output CSV.
 
 ### Useful sections from Scrapy docs
 - [Avoiding getting banned](https://docs.scrapy.org/en/latest/topics/practices.html#avoiding-getting-banned)
@@ -43,6 +31,32 @@ The crawl prototype:
 - (Other) [Assorted tips](https://www.zyte.com/blog/scrapy-tips-from-the-pros-part-1/)
 
 ### Polite vs effective
-There seems to be at least some trade-off between being polite to websites ([relate](https://www.zyte.com/blog/how-to-crawl-the-web-politely-with-scrapy/)) and effectively managing to gather information from a website. For example, should the User-Agent correctly identify the bot or use one corresponding to a normal browser.
+There seems to be at least some trade-off between being polite to websites ([related](https://www.zyte.com/blog/how-to-crawl-the-web-politely-with-scrapy/)) and effectively managing to gather information from a website. For example, should the User-Agent correctly identify the bot or use one corresponding to a normal browser?
 
 [Here](https://www.programmersought.com/article/66717873784/) is some tips to get around some measures employed by websites to prevent bots from scraping them.
+
+## Implemented
+### crawl_prototype
+The aim of this spider is to visit a list of NZ URLs and fetch information from these websites that would help to link these websites to the NZ business register. It was designed to replicate the dataset in Appendix A of [this paper](https://www.cbs.nl/-/media/_pdf/2016/40/measuring-the-internet-economy.pdf) as much as possible.
+In the future, it would also be useful if the scraped information could help to inform a _"digital industry"_ classification for the associated businesses and/or provide some idea of how many sales the business makes online.
+
+The current list of URLs is the ".nz" websites included in the February 2021 commoncrawl dataset ([CC-MAIN-2021-10](https://commoncrawl.org/2021/03/february-march-2021-crawl-archive-now-available/)). Unfortunately, this only includes about 40,000 out of an estimated 725,000 NZ websites ([source](https://docs.internetnz.nz/reports/)); a more-complete source of URLs would provide a more-complete scrape of the _New Zealand_ internet. It seems that [internetnz](https://docs.internetnz.nz/) should be able to provide a complete list of ".nz" URLs, since they _"keep the definitive register of .nz domain names"_, although it does not seem like this could be done with any of their current products/APIs.
+
+This spider is a customisation (child class) of Scrapy's SitemapSpider. Most websites have a sitemap that has all the pages on the website, so this provides an easy way to filter the pages (using regex on the URLs) and only visit the pages that are likely to provide useful information. This spider currently only visits the homepage, about us, and contact us pages of each website, and is structured such that each type of page is handled by both custom and generic logic. For example, information will be scraped from the homepage of each website using two functions; *parse_homepage* and *parse_generic_webpage*. This flexible structure means that different fields/information can be collected from only certain types of webpages (or every webpage).
+
+To run this spider, set the console's working directory to `crawl_prototype/` and then run `bash run_custom_sitemap.sh`. This spider:
+- is set to run through only 20 websites. To change this, change the values of CC_START & CC_END in `crawl_prototype/run_custom_sitemap.sh`.
+- is not set to cache responses, but does allow this option. To change this, set "HTTPCACHE_ENABLED = True" in `crawl_prototype/crawl_prototype/settings.py`.
+- is not set to make concurrent requests, since this makes debugging easier. To change this, set CONCURRENT_REQUESTS to some integer greater than 1 in `crawl_prototype/crawl_prototype/settings.py`. If this is changed, the CONCURRENT_REQUESTS_PER_DOMAIN should also be set to a single-digit integer for politeness to servers.
+- does not order the columns in the output CSV (TODO - could do in postprocessing python script). There is groupings of the output fields which is also not captured/implied in the output CSV.
+- is a work in progress. To try scraping a new piece of information from a webpage response, assign it to the "test" field and it will show up in the output CSV.
+
+Possible improvements:
+- Improve scrape success rate by adding javascript/browser support (i.e. Selenium). *Where appropriate*, this would enable circumventing measures used to prevent scraping. [link](https://stackoverflow.com/questions/47315699/scrapy-user-agent-and-robotstxt-obey-are-properly-set-but-i-still-get-error-40)
+- Detect HTML version (difficult?). [link](https://howtocheckversion.com/check-html-version-website/)
+- Detect Autonomous System Number (ASN) and ASN owner. [link1](https://www.cidr-report.org/as2.0/autnums.html), [link2](https://github.com/hadiasghari/pyasn)
+
+### wayback (TODO)
+The aim of this spider is to use the wayback machine (and other web archives?) to provide a back series of the websites scraped by the crawl_prototype spider.
+
+This could be as simple as determining when the business first started using a website, as this would imply when the business _"joined the digital economy"_, which could then be used to derive statistics about the growth of the digital economy over time. However, growth statistics *should* also depend on the amount of revenue derived from the website (directly or otherwise); if this information proves to difficult to gather then a tool like [BuiltWith](https://builtwith.com/) could be used.
