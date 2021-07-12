@@ -13,17 +13,20 @@ clear
 
 # ---Three options for logging---------------------------------------
 # 1. Just console:
-# scrapy crawl custom_sitemap -O custom_sitemap_output/full_sitemap.csv \
+# scrapy crawl custom_sitemap \
+#   -O spiders_output/custom_sitemap/full_sitemap.csv \
 #   -a cc_start=$CC_START -a cc_end=$CC_END
 # -------------------------------------------------------------------
 # 2. Both console and txt file:
-exec &> >(tee custom_sitemap_output/custom_sitemap_log.txt)
-scrapy crawl custom_sitemap -O custom_sitemap_output/full_sitemap.csv \
+exec &> >(tee spiders_output/custom_sitemap/log.txt)
+scrapy crawl custom_sitemap \
+  -O spiders_output/custom_sitemap/full_sitemap.csv \
   -a cc_start=$CC_START -a cc_end=$CC_END
 # -------------------------------------------------------------------
 # 3. Just txt file:
-# scrapy crawl custom_sitemap -O custom_sitemap_output/full_sitemap.csv \
-#   --logfile custom_sitemap_output/custom_sitemap_log.txt \
+# scrapy crawl custom_sitemap \
+#   -O spiders_output/custom_sitemap/full_sitemap.csv \
+#   --logfile spiders_output/custom_sitemap/log.txt \
 #   -a cc_start=$CC_START -a cc_end=$CC_END
 # -------------------------------------------------------------------
 
