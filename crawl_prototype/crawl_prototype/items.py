@@ -26,6 +26,7 @@ class GenericWebpageItem(Item):
     def __init__(self, wayback=False, *a, **kw):
         if wayback:
             self.fields['wayback_url'] = Field()
+            self.fields['wayback_dt'] = Field()
         
         super().__init__(*a, **kw)
 

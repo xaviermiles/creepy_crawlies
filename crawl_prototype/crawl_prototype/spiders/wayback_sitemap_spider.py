@@ -28,7 +28,7 @@ class WaybackSitemapSpider(CustomSitemapSpider):
         item['wayback_url'] = response.meta['wayback_machine_url']
         dt_str = re.search("^https://web.archive.org/web/(\d{14})id_/",
                            item['wayback_url']).groups(1)[0]
-        item['wayback_dt'] = dt_str
+        item['wayback_dt'] = int(dt_str)
         return item
         
     def parse_homepage(self, response):
