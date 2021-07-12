@@ -12,7 +12,7 @@ from scrapy_wayback_machine import UnhandledIgnoreRequest
 
 # local:
 from crawl_prototype import items
-from crawl_prototype.spiders.custom_sitemap import CustomSitemapSpider
+from crawl_prototype.spiders.custom_sitemap_spider import CustomSitemapSpider
 
 
 class WaybackSitemapSpider(CustomSitemapSpider):
