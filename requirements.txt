@@ -1,0 +1,6 @@
+pandas
+scrapy
+scrapy_wayback_machine
+
+# To view old_reference_material/ jupyter notebooks:
+jupyter
