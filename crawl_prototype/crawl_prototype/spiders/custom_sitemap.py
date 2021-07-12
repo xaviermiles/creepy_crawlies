@@ -146,7 +146,7 @@ class CustomSitemapSpider(SitemapSpider):
                 
         self.logger.info(f"Sitemap dictionary:\n{self.sitemap_urls_dict}")
         
-        super(CustomSitemapSpider, self).__init__(*a, **kw)
+        super().__init__(*a, **kw)
 
     def start_requests(self):
         for homepage, robots_or_sitemap in self.sitemap_urls_dict.items():
@@ -154,11 +154,12 @@ class CustomSitemapSpider(SitemapSpider):
             if robots_or_sitemap:
                 yield Request(robots_or_sitemap, callback=self._parse_sitemap)
     
-    def parse_homepage(self, response):
+    def parse_homepage(self, response, preexisting_item=None):
         """
         parse_homepage: FILL OUT
         """
-        hp_item = items.HomepageItem()
+        hp_item = preexisting_item or items.HomepageItem()
+        self.logger.info(hp_item)
         
         # "Content"
         bs = BeautifulSoup(response.body, 'html.parser')
@@ -212,11 +213,11 @@ class CustomSitemapSpider(SitemapSpider):
         
         return self.parse_generic_webpage(response, preexisting_item=hp_item)
     
-    def parse_about_us(self, response):
+    def parse_about_us(self, response, preexisting_item=None):
         """
         parse_about_us: FILL OUT
         """
-        au_item = items.AboutUsItem()
+        au_item = preexisting_item or items.AboutUsItem()
         # TODO: add specific logic for AboutUs/ContactUs pages
         
         return self.parse_generic_webpage(response, preexisting_item=au_item)
@@ -225,10 +226,7 @@ class CustomSitemapSpider(SitemapSpider):
         """
         parse_generic_webpage: FILL OUT
         """
-        if preexisting_item:
-            gwp_item = preexisting_item
-        else:
-            gwp_item = items.GenericWebpageItem()
+        gwp_item = preexisting_item or items.GenericWebpageItem()
         
         gwp_item['url'] = response.url
         gwp_item['level'] = get_url_level(response.url)

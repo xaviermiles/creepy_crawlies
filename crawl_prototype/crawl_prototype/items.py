@@ -31,6 +31,12 @@ class GenericWebpageItem(Item):
     
     test = Field()
     
+    def __init__(self, wayback=False, *a, **kw):
+        if wayback:
+            self.fields['wayback_url'] = Field()
+        
+        super().__init__(*a, **kw)
+
     
 class AboutUsItem(GenericWebpageItem):
     # TODO: add specific fields for AboutUs/ContactUs pages
