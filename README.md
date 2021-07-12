@@ -36,7 +36,7 @@ There seems to be at least some trade-off between being polite to websites ([rel
 [Here](https://www.programmersought.com/article/66717873784/) is some tips to get around some measures employed by websites to prevent bots from scraping them.
 
 ## Implemented
-### crawl_prototype
+### custom_sitemap
 The aim of this spider is to visit a list of NZ URLs and fetch information from these websites that would help to link these websites to the NZ business register. It was designed to replicate the dataset in Appendix A of [this paper](https://www.cbs.nl/-/media/_pdf/2016/40/measuring-the-internet-economy.pdf) as much as possible.
 In the future, it would also be useful if the scraped information could help to inform a _"digital industry"_ classification for the associated businesses and/or provide some idea of how many sales the business makes online.
 
@@ -57,6 +57,6 @@ Possible improvements:
 - Detect Autonomous System Number (ASN) and ASN owner. [link1](https://www.cidr-report.org/as2.0/autnums.html), [link2](https://github.com/hadiasghari/pyasn)
 
 ### wayback (TODO)
-The aim of this spider is to use the wayback machine (and other web archives?) to provide a back series of the websites scraped by the crawl_prototype spider.
+The aim of this spider is to use the wayback machine (and other web archives?) to provide a back series of the websites scraped by the custom_sitemap spider.
 
 This could be as simple as determining when the business first started using a website, as this would imply when the business _"joined the digital economy"_, which could then be used to derive statistics about the growth of the digital economy over time. However, growth statistics *should* also depend on the amount of revenue derived from the website (directly or otherwise); if this information proves to difficult to gather then a tool like [BuiltWith](https://builtwith.com/) could be used.
