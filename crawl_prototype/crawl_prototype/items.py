@@ -6,15 +6,7 @@
 from scrapy import Item, Field
 
 
-# For about_us_spider:
-class LinkItem(Item):
-    link = Field()
-    text = Field()
-    level = Field()  # example.com = 1, example.com/about-us = 2, ...
-    has_about_us = Field()
-    
-    
-# For custom_sitemap_spider:
+# For custom_sitemap_spider and wayback_sitemap_spider:
 class GenericWebpageItem(Item):
     # Fields recorded from every webpage on a website
     url = Field()
