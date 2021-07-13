@@ -91,7 +91,8 @@ class CustomSitemapSpider(SitemapSpider):
     sitemap_follow = ['\.nz/']
 
     def __init__(self, cc_start=4, cc_end=14, *a, **kw):
-        NUM_LINES = 41170
+        with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
+            cc_domains_all = f.read().splitlines()
         try:
             # These arguments are passed from console when initiating scrapy.
             cc_start_int = int(cc_start)
@@ -101,52 +102,53 @@ class CustomSitemapSpider(SitemapSpider):
         else:
             # If integers, verify whether they give a sensible list slice
             # (does not support negative integers).
+            num_lines = len(cc_domains_all) + 1
             if cc_start_int >= cc_end_int:
                 raise ValueError("cc_start should be < cc_end")
             elif cc_start_int <= 3:
                 raise ValueError("cc_start should be >= 4")
-            elif cc_end_int > NUM_LINES:
-                raise ValueError(f"cc_end should be <= {NUM_LINES} (num_lines)")
+            elif cc_end_int > num_lines:
+                raise ValueError(f"cc_end should be <= {num_lines} (num_lines+1)")
+        # Subtract one from cc_start/cc_end so that they correspond to line 
+        # numbers.
+        cc_domains = cc_domains_all[(cc_start_int - 1):(cc_end_int - 1)]
         
-        with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
-            # Subtract one from cc_start/cc_end so that they correspond to line
-            # numbers.
-            cc_domains = f.read().splitlines()[(cc_start_int - 1):(cc_end_int - 1)]
-        
-        # self.sitemap_urls is normally used but the start_requests method is 
-        # adapted to handle this dictionary structure, so parse_homepage and
-        # parse_about_us are called together(-ish because of concurrency).
-        glob_str = os.path.join("custom_sitemap_output", "cached_sitemaps_*_to_*.json")
-        regex_str = "cached_sitemaps_(\d+)_to_(\d+).json"
-        glob_match = glob.glob(glob_str)
-        line_nums_correct = False
-        if glob_match:
-            json_fpath = glob.glob(glob_str)[0]  # should only be one match
-            line_nums = re.search(regex_str, json_fpath).groups()
-            if cc_start_int == int(line_nums[0]) and cc_end_int == int(line_nums[1]):
-                line_nums_correct = True
-            else:
-                self.logger.info("Removing old sitemap_urls_dict JSON file")
-                os.remove(json_fpath)  # so there is only one cached file
-            
-        if settings.HTTPCACHE_ENABLED and line_nums_correct:
-            self.logger.info("Loading sitemap_urls_dict from JSON file")
-            with open(json_fpath, 'r') as f:
-                self.sitemap_urls_dict = json.load(f)
+        # This large amount of code for HTTP caching is related to saving each
+        # website's robots/sitemaps link to a JSON. For the sake of tidyness,
+        # only one robots/sitemaps JSON is saved (ie. an existing JSON must be 
+        # replaced if it doesn't correspond to the line numbers specified).
+        if settings.HTTPCACHE_ENABLED:
+            glob_str = "spiders_output/cached_sitemaps_*_to_*.json"
+            regex_str = "cached_sitemaps_(\d+)_to_(\d+).json"
+            glob_match = glob.glob(glob_str)
+            if glob_match:
+                json_in_fpath = glob_match[0]  # should only be one match
+                line_nums = re.search(regex_str, json_in_fpath).groups()
+                if cc_start_int == int(line_nums[0]) and cc_end_int == int(line_nums[1]):
+                    with open(json_in_fpath, 'r') as f:
+                        self.sitemap_urls_dict = json.load(f)
+                    self.logger.info("Loaded sitemap_urls_dict from JSON file")
+                else:
+                    os.remove(json_in_fpath)  # so there is only one cached file
+                    self.logger.info("Removed old sitemap_urls_dict JSON file")
+                    self.make_sitemap_urls_dict(cc_domains)
+                    
+                    json_out_fpath = ("spiders_output/cached_sitemaps_"
+                                      f"{cc_start_int}_to_{cc_end_int}.json")
+                    with open(json_out_fpath, 'w') as f:
+                        json.dump(self.sitemap_urls_dict, f)
+                    self.logger.info("Saved sitemap_urls_dict to JSON file")
         else:
-            self.logger.info("Constructing sitemap_urls_dict and saving to JSON file")
-            self.sitemap_urls_dict = {
-                f"https://{domain}": get_robots_or_sitemap(domain, self.logger)
-                for domain in cc_domains
-            }
-            json_fpath = os.path.join("custom_sitemap_output", 
-                                      f"cached_sitemaps_{cc_start_int}_to_{cc_end_int}.json")
-            with open(json_fpath, 'w') as f:
-                json.dump(self.sitemap_urls_dict, f)
-                
-        self.logger.info(f"Sitemap dictionary:\n{self.sitemap_urls_dict}")
-        
+            self.make_sitemap_urls_dict(cc_domains)
+            
         super().__init__(*a, **kw)
+        
+    def make_sitemap_urls_dict(self, cc_domains):
+        self.sitemap_urls_dict = {
+            f"https://{domain}": get_robots_or_sitemap(domain, self.logger)
+            for domain in cc_domains
+        }
+        self.logger.info("Constructed sitemap_urls_dict from scratch")
 
     def start_requests(self):
         for homepage, robots_or_sitemap in self.sitemap_urls_dict.items():
