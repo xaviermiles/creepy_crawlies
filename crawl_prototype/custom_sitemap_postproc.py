@@ -14,13 +14,15 @@ from crawl_prototype import items
 parser = argparse.ArgumentParser()
 parser.add_argument("--cc_start", type=int)
 parser.add_argument("--cc_end", type=int)
+parser.add_argument("--output_folder", type=str)
 args = parser.parse_args()
 CC_START, CC_END = args.cc_start, args.cc_end
+OUTPUT_FOLDER = args.output_folder
 
 print("\n\nStarting post-processing")
       
 print("...Aggregating output by website...")
-full_sitemap = pd.read_csv("custom_sitemap_output/full_sitemap.csv")
+full_sitemap = pd.read_csv(f"{OUTPUT_FOLDER}/full_sitemap.csv")
 # !!! Add custom logic for each column once the columns are more finalised !!!
 def general_agg_func(x):
     x_filt = [y for y in x if y != 'set()']
@@ -32,6 +34,7 @@ def general_agg_func(x):
 
 
 per_website_sitemap = full_sitemap.groupby('website').agg(general_agg_func)
+print("...Adding rows for missing websites...")
 # Add rows for the non-scraped websites (websites that blocked the crawl).
 # Subtract one from CC_START/CC_END so that they correspond to line numbers.
 with open("../old_reference_material/ccmain-2021-10-nz-netlocs.txt") as f:
@@ -42,6 +45,7 @@ per_website_sitemap = per_website_sitemap.reset_index(level=0)
 per_website_sitemap.index = pd.Index(range(CC_START, CC_END), name='txt_line_num')
 
 # Add field groupings
+print("...Adding field groupings...")
 group_to_field = OrderedDict({
     'General': ['website','title','description','author','copyright'],
     'eCommerce': ['cart_software','has_card','payment_systems'],
@@ -68,7 +72,7 @@ per_website_sitemap.columns = pd.MultiIndex.from_tuples(
 )
 
 
-per_website_sitemap.to_csv("custom_sitemap_output/per_website_sitemap.csv")
+per_website_sitemap.to_csv(f"{OUTPUT_FOLDER}/per_website_sitemap.csv")
 print("Finished post-processing")
 
 # To import the per-website CSV into Python:
