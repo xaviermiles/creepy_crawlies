@@ -1,48 +1,35 @@
 # Contains CustomSitemapSpider and associated helper functions.
 
 # How the spider handles settings.HTTPCACHE_ENABLED==True:
+# - (Scrapy caches all responses)
 # - Setting ip_address to "*cache copy*"
 # - Setting ssl_certificate to "*cache copy*"
 # - Setting protocol to "*cache copy*"
-# - Keeping a list of robots/sitemaps in txt file, so these HEAD requests do 
-#   not need to be sent. Only one cached copy is saved, so the HEAD requests 
-#   will be necessary if the saved copy does not have the correct line numbers.
 
 # To download ASN lookup file (to be used with pyasn):
 # $ ~/.local/bin/pyasn_util_download.py --latest
 # $ ~/.local/bin/pyasn_util_convert.py --single <downloaded_RIB_filename> <ipasn_db_filename>
 
 import re
-import os, glob
-import json
 import logging
 import socket
-import urllib3, requests
+import requests
 import unicodedata
 from bs4 import BeautifulSoup
 from urllib.parse import urlsplit
 
-import scrapy
 from scrapy import Request
 from scrapy.spiders import SitemapSpider
-from scrapy.utils.sitemap import Sitemap, sitemap_urls_from_robots
+from scrapy.spidermiddlewares.httperror import HttpError
+from twisted.internet.error import ConnectionRefusedError
 
 # local:
 import ecom_utils
 from crawl_prototype import items, settings
 
-
-# To silently allow verify=False in requests:
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
-def does_url_exist(url, logger):
-    status_code = get_http_status_code(url, logger)
-    if status_code:
-        return status_code < 400
             
 def get_url_level(url):
-    return len(list(filter(None, urlsplit(url).path.split('/')))) + 1
+    return len([x for x in urlsplit(url).path.split('/') if x]) + 1
 
 def get_domain(url):
     # Remove www and protocol to ensure consistency between parse_homepage
@@ -50,31 +37,8 @@ def get_domain(url):
     # !!! It should be verified that this is the most sensible process 
     #     at some point !!!
     url_parts = urlsplit(url)
-    return url_parts.netloc.replace('www.', '')
-        
-    
-def get_http_status_code(url, logger):
-    try:
-        # verify=False is only acceptable since it is a one-time
-        # request (ie. no back-and-forth between client & server).
-        # Is there a safer alternative???
-        # See https://stackoverflow.com/questions/10667960/python-requests-throwing-sslerror
-        r = requests.head(url, verify=False)  
-        return r.status_code
-    except Exception as e:
-        logger.info(f"{type(e).__name__}: {url}")
-        
-        
-def get_robots_or_sitemap(domain, logger):
-    # Order matters:
-    attempts = [
-        f"https://{domain}/robots.txt",
-        f"https://{domain}/sitemap.xml",
-    ]
-    
-    for url in attempts:
-        if does_url_exist(url, logger):
-            return url
+    domain = url_parts.netloc.replace('www.', '')
+    return domain
 
 
 class CustomSitemapSpider(SitemapSpider):
@@ -103,65 +67,65 @@ class CustomSitemapSpider(SitemapSpider):
             # If integers, verify whether they give a sensible list slice
             # (does not support negative integers).
             num_lines = len(cc_domains_all) + 1
-            if cc_start_int >= cc_end_int:
-                raise ValueError("cc_start should be < cc_end")
+            if cc_start_int > cc_end_int:
+                raise ValueError("cc_start should be <= cc_end")
             elif cc_start_int <= 3:
                 raise ValueError("cc_start should be >= 4")
             elif cc_end_int > num_lines:
                 raise ValueError(f"cc_end should be <= {num_lines} (num_lines+1)")
         # Subtract one from cc_start/cc_end so that they correspond to line 
         # numbers.
-        cc_domains = cc_domains_all[(cc_start_int - 1):(cc_end_int - 1)]
+        self.homepage_urls = [
+            f"https://{domain}" 
+            for domain in cc_domains_all[(cc_start_int - 1):(cc_end_int - 1)]
+        ]
         
-        # This large amount of code for HTTP caching is related to saving each
-        # website's robots/sitemaps link to a JSON. For the sake of tidyness,
-        # only one robots/sitemaps JSON is saved (ie. an existing JSON must be 
-        # replaced if it doesn't correspond to the line numbers specified).
-        if settings.HTTPCACHE_ENABLED:
-            glob_str = "spiders_output/cached_sitemaps_*_to_*.json"
-            regex_str = "cached_sitemaps_(\d+)_to_(\d+).json"
-            glob_match = glob.glob(glob_str)
-            if glob_match:
-                json_in_fpath = glob_match[0]  # should only be one match
-                line_nums = re.search(regex_str, json_in_fpath).groups()
-                if cc_start_int == int(line_nums[0]) and cc_end_int == int(line_nums[1]):
-                    with open(json_in_fpath, 'r') as f:
-                        self.sitemap_urls_dict = json.load(f)
-                    self.logger.info("Loaded sitemap_urls_dict from JSON file")
-                else:
-                    os.remove(json_in_fpath)  # so there is only one cached file
-                    self.logger.info("Removed old sitemap_urls_dict JSON file")
-                    self.make_sitemap_urls_dict(cc_domains)
-                    
-                    json_out_fpath = ("spiders_output/cached_sitemaps_"
-                                      f"{cc_start_int}_to_{cc_end_int}.json")
-                    with open(json_out_fpath, 'w') as f:
-                        json.dump(self.sitemap_urls_dict, f)
-                    self.logger.info("Saved sitemap_urls_dict to JSON file")
-        else:
-            self.make_sitemap_urls_dict(cc_domains)
-            
-        super().__init__(*a, **kw)
-        
-    def make_sitemap_urls_dict(self, cc_domains):
-        self.sitemap_urls_dict = {
-            f"https://{domain}": get_robots_or_sitemap(domain, self.logger)
-            for domain in cc_domains
+        SITEMAP_SUFFIXES = [
+            "/robots.txt",
+            "/sitemap.xml",
+        ]
+        self.next_sitemap = {
+            i: j for i, j in zip(SITEMAP_SUFFIXES[:-1], SITEMAP_SUFFIXES[1:])
         }
-        self.logger.info("Constructed sitemap_urls_dict from scratch")
+        self.next_sitemap['START'] = SITEMAP_SUFFIXES[0]
+           
+        super().__init__(*a, **kw)
 
     def start_requests(self):
-        for homepage, robots_or_sitemap in self.sitemap_urls_dict.items():
+        for homepage in self.homepage_urls:
             yield Request(homepage, callback=self.parse_homepage)
-            if robots_or_sitemap:
-                yield Request(robots_or_sitemap, callback=self._parse_sitemap)
-    
+            
+            sitemap_to_try = self.next_sitemap['START']
+            yield Request(
+                homepage + sitemap_to_try, 
+                callback=self._parse_sitemap, 
+                errback=self.sitemap_errback, 
+                meta={'homepage': homepage, 'sitemap': sitemap_to_try}
+            )
+           
+    def sitemap_errback(self, failure):
+        # If the website doesn't have the given sitemap suffix (ie returns 404
+        # status code), then the next suffix is tried (if there is a next one).
+        if failure.check(HttpError) and failure.value.response.status == 404:
+            homepage = failure.request.meta['homepage']
+            tried_sitemap = failure.request.meta['sitemap']
+            next_sitemap = self.next_sitemap.get(tried_sitemap)
+            if next_sitemap:
+                yield Request(
+                    homepage + next_sitemap, 
+                    callback=self._parse_sitemap,
+                    errback=self.sitemap_errback,
+                    meta={'homepage': homepage, 'sitemap': next_sitemap}
+                )
+                
+        elif failure.check(ConnectionRefusedError):
+            pass
+            
     def parse_homepage(self, response, preexisting_item=None):
         """
         parse_homepage: FILL OUT
         """
         hp_item = preexisting_item or items.HomepageItem()
-        self.logger.info(hp_item)
         
         # "Content"
         bs = BeautifulSoup(response.body, 'html.parser')

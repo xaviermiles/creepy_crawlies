@@ -22,7 +22,7 @@ DEFAULT_REQUEST_HEADERS = {
     'Sec-Fetch-Site': 'same-origin',
     'Sec-Fetch-User': '?1',
 }
-#COOKIES_ENABLED = False  # (enabled by default)
+COOKIES_ENABLED = False  # (enabled by default)
 ROBOTSTXT_OBEY = True
 
 # Concurrency
@@ -55,7 +55,7 @@ CONCURRENT_REQUESTS_PER_IP = 4
 #}
 
 # HTTP caching (disabled by default)
-HTTPCACHE_ENABLED = False
+HTTPCACHE_ENABLED = True
 HTTPCACHE_EXPIRATION_SECS = 86400  # 1 day
 HTTPCACHE_DIR = 'httpcache'
 HTTPCACHE_IGNORE_HTTP_CODES = []
