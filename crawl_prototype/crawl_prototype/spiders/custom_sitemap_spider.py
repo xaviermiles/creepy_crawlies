@@ -15,7 +15,7 @@ import logging
 import socket
 import requests
 import unicodedata
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 from urllib.parse import urlsplit
 
 from scrapy import Request
@@ -128,24 +128,20 @@ class CustomSitemapSpider(SitemapSpider):
         hp_item = preexisting_item or items.HomepageItem()
         
         # "Content"
-        bs = BeautifulSoup(response.body, 'html.parser')
-        hp_item['title'] = bs.find('title').get_text()
-        author_tag = bs.find('meta', {'name': 'author', 'content': True})
-        hp_item['author'] = author_tag['content'] if author_tag else None
-        description_tag = bs.find('meta', {'name': 'description', 'content': True})
-        hp_item['description'] = description_tag['content'] if description_tag else None
+        hp_item['title'] = response.xpath('//title/text()').get()
+        hp_item['author'] = response.xpath("//meta[@name='author']/@content").get()
+        hp_item['description'] = response.xpath("//meta[@name='description']/@content").get()
         
-        footer = bs.find('footer')
-        if footer:
-            text_parts = [x for x in re.split(r'\n|\t|\r', footer.get_text()) if x]
-            # \xa9 is unicode for the copyright symbol
-            text_parts_copyright = [
-                re.match(r'^.*(\xa9|copyright).*$', text, flags=re.I)
-                for text in text_parts
-            ]
-            hp_item['copyright'] = [
-                t.group(0).strip() for t in text_parts_copyright if t
-            ]
+        footer = ''.join(response.xpath("//footer//text()").getall())
+        footer_parts = [x for x in re.split(r'\n|\t|\r', footer) if x]
+        # \xa9 is unicode for the copyright symbol
+        footer_copyright_parts = [
+            re.match(r'^.*(\xa9|copyright).*$', text, flags=re.I) 
+            for text in footer_parts
+        ]
+        hp_item['as_number'] = [
+            t.group(0).strip() for t in footer_copyright_parts if t
+        ]
         
         # (Try to) Detect ecommerce software
         response_html = response.body.decode()
